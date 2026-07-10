@@ -50,6 +50,8 @@ atoi: ; $RAX pointer input, $RAX 32 bit signed int literal output
         je .done ; jump to done if true
         cmp bl, '-' ; compare bl and '-'
         je .negative ; jump to negative if true
+        cmp bl, '+' ; compare bl and '+'
+        je .skip ; jump to skip if true
         cmp bl, ' ' ; compare bl and ' '
         je .skip ; skip if true
         cmp bl, '0' ; compare bl and '0'

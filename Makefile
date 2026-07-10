@@ -6,4 +6,4 @@ all:
 	./bin/calculator
 
 clean:
-	rm -rf obj bin
+	rm -rf obj

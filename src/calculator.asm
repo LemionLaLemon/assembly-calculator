@@ -12,7 +12,7 @@ section .data
 
 section .bss
     inputBuffer resb 64
-    working resb 8
+    working resb 12
 
     term1 resb 4
     term2 resb 4
@@ -38,10 +38,10 @@ multiplication:
     call finish
 
 division:
-    mov eax, dword [term1] ; eax = term1
-    mov ebx, dword [term2] ; ebx = term2
-    xor edx, edx ; clear edx
-    div ebx ; eax = eax / ebx, edx = remainder
+    movsx rax, dword [term1] ; eax = term1 (move sign extended 32 bit -> 64 bit)
+    cqo ; sign extend rax into rdx:rax (convert quadword to octaword)
+    movsx rbx, dword [term2] ; ebx = term2
+    idiv ebx ; eax = eax / ebx, edx = remainder
     call finish
 
 finish:

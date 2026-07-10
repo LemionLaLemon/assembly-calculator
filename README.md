@@ -6,7 +6,7 @@ It reads the terminal for user input, takes in two digits and an operator (eithe
 The calculator does not support decimal numbers. Inputs are treated as integers and outputs are 32 bit signed integers.
 
 If compiled and stripped, the final executable will be 8600 bytes (8.6kb) and if compiled using `make` the final executable will be 9880 bytes (9.88kb).
-When ran, it'll use 16 kilobytes of memory on the stack, and 0 bytes of memory on the heap (it's a calculator, why would you possibly need the heap)
+When ran, it'll use 16 kilobytes of memory on the stack, and 0 bytes of memory on the heap (it's a calculator, why would you possibly need the heap?)
 
 ## Typical operation of the calculator:
 <img width="187" height="160" alt="image" src="https://github.com/user-attachments/assets/e5ee8555-86a0-4f0f-90d9-7c62c6709b7d" />
@@ -24,7 +24,9 @@ make
 ```
 `make` will automatically run the calculator as well.
 
-To run the calculator manually, navigate to the bin/ folder and run ./calculator
+To run the calculator manually, navigate to the bin/ folder and run `./calculator`
+
+Note: if contributing, please run `make clean` to get rid of the temporary `obj/` folder containing compiled binaries.
 
 ## Other features (or bugs)
 This calculator isnt written fantastically and has a few quirks, eh hem "Features" and here's a list of them.
@@ -40,13 +42,32 @@ If an operator couldn't be found, or an operator isnt part of the 4 supported op
 
 atoi will switch the sign of the number every time a "-" is encountered in the string.
 
+
 for example:
 
 `--2` would return `2`
 
-`---4` woudl return `-4`
+`---4` would return `-4`
+
 
 This behavior is inconsistent with the C library's implementation of atoi.
+
+### Nonstandard atoi space character handling
+
+atoi will just continue on reading when a space (0x20) is spotted rather than stopping.
+
+
+for example:
+
+`123 456` would return `123456`
+
+intended: `123`
+
+
+This behavior is inconsistent with the C library's implementation of atoi.
+
+However, this is more of a feature than a bug, since you can separate long numbers using spaces.
+`3 141 592 653` and so on.
 
 ### Lacking division by 0 handling
 <img width="1025" height="157" alt="image" src="https://github.com/user-attachments/assets/5322a89c-5c0b-4773-8e40-be505b3e4789" />
@@ -60,255 +81,240 @@ This will result in SIGFPE (Floating point exception) and a crash with exit code
 
 The input buffer is fixed to 64 bytes, so any data entered past that will be truncated.
 
-The result buffer, called "working" for some reason (probably as a result of many versions) is fixed to 8 bytes (one register, or quadword).
+The result buffer, called "working" for some reason (probably as a result of many versions) is fixed to 12 bytes (one register, or quadword).
+
+Note: image indicates working has 8 bytes reserved, but that has been changed. Image will be updated  later.
+
+### Input desync
+If an input over 64 bytes is entered into any field, it'll overflow into the next stdin read.
+
+This results in data from the prevous read being put in the new read, possibly resulting in a wrong calculation.
 
  ## objdump -d
  ```
- 0000000000401000 <addition>:
-  401000:	8b 04 25 84 20 40 00 	mov    0x402084,%eax
-  401007:	8b 1c 25 88 20 40 00 	mov    0x402088,%ebx
+0000000000401000 <.text>:
+  401000:	8b 04 25 88 20 40 00 	mov    0x402088,%eax
+  401007:	8b 1c 25 8c 20 40 00 	mov    0x40208c,%ebx
   40100e:	48 01 d8             	add    %rbx,%rax
-  401011:	e8 41 00 00 00       	call   401057 <finish>
-
-0000000000401016 <subtraction>:
-  401016:	8b 04 25 84 20 40 00 	mov    0x402084,%eax
-  40101d:	8b 1c 25 88 20 40 00 	mov    0x402088,%ebx
+  401011:	e8 43 00 00 00       	call   0x401059
+  401016:	8b 04 25 88 20 40 00 	mov    0x402088,%eax
+  40101d:	8b 1c 25 8c 20 40 00 	mov    0x40208c,%ebx
   401024:	29 d8                	sub    %ebx,%eax
-  401026:	e8 2c 00 00 00       	call   401057 <finish>
-
-000000000040102b <multiplication>:
-  40102b:	8b 04 25 84 20 40 00 	mov    0x402084,%eax
-  401032:	8b 1c 25 88 20 40 00 	mov    0x402088,%ebx
+  401026:	e8 2e 00 00 00       	call   0x401059
+  40102b:	8b 04 25 88 20 40 00 	mov    0x402088,%eax
+  401032:	8b 1c 25 8c 20 40 00 	mov    0x40208c,%ebx
   401039:	f7 e3                	mul    %ebx
-  40103b:	e8 17 00 00 00       	call   401057 <finish>
-
-0000000000401040 <division>:
-  401040:	8b 04 25 84 20 40 00 	mov    0x402084,%eax
-  401047:	8b 1c 25 88 20 40 00 	mov    0x402088,%ebx
-  40104e:	31 d2                	xor    %edx,%edx
-  401050:	f7 f3                	div    %ebx
-  401052:	e8 00 00 00 00       	call   401057 <finish>
-
-0000000000401057 <finish>:
-  401057:	48 bf 7c 20 40 00 00 	movabs $0x40207c,%rdi
-  40105e:	00 00 00 
-  401061:	e8 8a 01 00 00       	call   4011f0 <itoa>
-  401066:	49 89 c4             	mov    %rax,%r12
-  401069:	b8 01 00 00 00       	mov    $0x1,%eax
-  40106e:	bf 01 00 00 00       	mov    $0x1,%edi
-  401073:	48 be 1c 20 40 00 00 	movabs $0x40201c,%rsi
-  40107a:	00 00 00 
-  40107d:	ba 08 00 00 00       	mov    $0x8,%edx
-  401082:	0f 05                	syscall
-  401084:	b8 01 00 00 00       	mov    $0x1,%eax
-  401089:	bf 01 00 00 00       	mov    $0x1,%edi
-  40108e:	48 be 7c 20 40 00 00 	movabs $0x40207c,%rsi
-  401095:	00 00 00 
-  401098:	4c 89 e2             	mov    %r12,%rdx
-  40109b:	0f 05                	syscall
-  40109d:	b8 01 00 00 00       	mov    $0x1,%eax
-  4010a2:	bf 01 00 00 00       	mov    $0x1,%edi
-  4010a7:	48 be 3a 20 40 00 00 	movabs $0x40203a,%rsi
-  4010ae:	00 00 00 
-  4010b1:	ba 01 00 00 00       	mov    $0x1,%edx
-  4010b6:	0f 05                	syscall
-  4010b8:	e9 28 01 00 00       	jmp    4011e5 <exit>
-
-00000000004010bd <_start>:
-  4010bd:	b8 01 00 00 00       	mov    $0x1,%eax
-  4010c2:	bf 01 00 00 00       	mov    $0x1,%edi
-  4010c7:	48 be 00 20 40 00 00 	movabs $0x402000,%rsi
-  4010ce:	00 00 00 
-  4010d1:	ba 09 00 00 00       	mov    $0x9,%edx
-  4010d6:	0f 05                	syscall
-  4010d8:	b8 00 00 00 00       	mov    $0x0,%eax
-  4010dd:	bf 00 00 00 00       	mov    $0x0,%edi
-  4010e2:	48 be 3c 20 40 00 00 	movabs $0x40203c,%rsi
-  4010e9:	00 00 00 
-  4010ec:	ba 40 00 00 00       	mov    $0x40,%edx
-  4010f1:	0f 05                	syscall
-  4010f3:	48 b8 3c 20 40 00 00 	movabs $0x40203c,%rax
-  4010fa:	00 00 00 
-  4010fd:	e8 29 01 00 00       	call   40122b <atoi>
-  401102:	89 04 25 84 20 40 00 	mov    %eax,0x402084
-  401109:	b8 01 00 00 00       	mov    $0x1,%eax
-  40110e:	bf 01 00 00 00       	mov    $0x1,%edi
-  401113:	48 be 09 20 40 00 00 	movabs $0x402009,%rsi
-  40111a:	00 00 00 
-  40111d:	ba 0a 00 00 00       	mov    $0xa,%edx
-  401122:	0f 05                	syscall
-  401124:	b8 00 00 00 00       	mov    $0x0,%eax
-  401129:	bf 00 00 00 00       	mov    $0x0,%edi
-  40112e:	48 be 3c 20 40 00 00 	movabs $0x40203c,%rsi
-  401135:	00 00 00 
-  401138:	ba 40 00 00 00       	mov    $0x40,%edx
-  40113d:	0f 05                	syscall
-  40113f:	8a 04 25 3c 20 40 00 	mov    0x40203c,%al
-  401146:	88 04 25 8c 20 40 00 	mov    %al,0x40208c
-  40114d:	b8 01 00 00 00       	mov    $0x1,%eax
-  401152:	bf 01 00 00 00       	mov    $0x1,%edi
-  401157:	48 be 13 20 40 00 00 	movabs $0x402013,%rsi
-  40115e:	00 00 00 
-  401161:	ba 09 00 00 00       	mov    $0x9,%edx
-  401166:	0f 05                	syscall
-  401168:	b8 00 00 00 00       	mov    $0x0,%eax
-  40116d:	bf 00 00 00 00       	mov    $0x0,%edi
-  401172:	48 be 3c 20 40 00 00 	movabs $0x40203c,%rsi
-  401179:	00 00 00 
-  40117c:	ba 40 00 00 00       	mov    $0x40,%edx
-  401181:	0f 05                	syscall
-  401183:	48 b8 3c 20 40 00 00 	movabs $0x40203c,%rax
-  40118a:	00 00 00 
-  40118d:	e8 99 00 00 00       	call   40122b <atoi>
-  401192:	89 04 25 88 20 40 00 	mov    %eax,0x402088
-  401199:	48 0f b6 04 25 8c 20 	movzbq 0x40208c,%rax
-  4011a0:	40 00 
-  4011a2:	48 83 f8 2b          	cmp    $0x2b,%rax
-  4011a6:	0f 84 54 fe ff ff    	je     401000 <addition>
-  4011ac:	48 83 f8 2d          	cmp    $0x2d,%rax
-  4011b0:	0f 84 60 fe ff ff    	je     401016 <subtraction>
-  4011b6:	48 83 f8 2a          	cmp    $0x2a,%rax
-  4011ba:	0f 84 6b fe ff ff    	je     40102b <multiplication>
-  4011c0:	48 83 f8 2f          	cmp    $0x2f,%rax
-  4011c4:	0f 84 76 fe ff ff    	je     401040 <division>
-  4011ca:	b8 01 00 00 00       	mov    $0x1,%eax
-  4011cf:	bf 01 00 00 00       	mov    $0x1,%edi
-  4011d4:	48 be 24 20 40 00 00 	movabs $0x402024,%rsi
-  4011db:	00 00 00 
-  4011de:	ba 16 00 00 00       	mov    $0x16,%edx
-  4011e3:	0f 05                	syscall
-
-00000000004011e5 <exit>:
-  4011e5:	b8 3c 00 00 00       	mov    $0x3c,%eax
-  4011ea:	48 31 ff             	xor    %rdi,%rdi
-  4011ed:	0f 05                	syscall
-  4011ef:	90                   	nop
-
-00000000004011f0 <itoa>:
-  4011f0:	49 89 f8             	mov    %rdi,%r8
-  4011f3:	85 c0                	test   %eax,%eax
-  4011f5:	79 09                	jns    401200 <itoa.convert>
-  4011f7:	f7 d8                	neg    %eax
-  4011f9:	41 c6 00 2d          	movb   $0x2d,(%r8)
-  4011fd:	49 ff c0             	inc    %r8
-
-0000000000401200 <itoa.convert>:
-  401200:	bb 0a 00 00 00       	mov    $0xa,%ebx
-  401205:	48 31 c9             	xor    %rcx,%rcx
-
-0000000000401208 <itoa.loop_div>:
-  401208:	31 d2                	xor    %edx,%edx
-  40120a:	f7 f3                	div    %ebx
-  40120c:	80 c2 30             	add    $0x30,%dl
-  40120f:	52                   	push   %rdx
-  401210:	48 ff c1             	inc    %rcx
-  401213:	85 c0                	test   %eax,%eax
-  401215:	75 f1                	jne    401208 <itoa.loop_div>
-
-0000000000401217 <itoa.pop_digits>:
-  401217:	58                   	pop    %rax
-  401218:	41 88 00             	mov    %al,(%r8)
-  40121b:	49 ff c0             	inc    %r8
-  40121e:	e2 f7                	loop   401217 <itoa.pop_digits>
-  401220:	41 c6 00 00          	movb   $0x0,(%r8)
-  401224:	4c 89 c0             	mov    %r8,%rax
-  401227:	48 29 f8             	sub    %rdi,%rax
-  40122a:	c3                   	ret
-
-000000000040122b <atoi>:
-  40122b:	53                   	push   %rbx
-  40122c:	41 50                	push   %r8
-  40122e:	41 51                	push   %r9
-  401230:	48 31 c9             	xor    %rcx,%rcx
-  401233:	ba 01 00 00 00       	mov    $0x1,%edx
-  401238:	4d 31 c0             	xor    %r8,%r8
-  40123b:	4d 31 c9             	xor    %r9,%r9
-
-000000000040123e <atoi.forEachNumber>:
-  40123e:	8a 1c 08             	mov    (%rax,%rcx,1),%bl
-  401241:	80 fb 00             	cmp    $0x0,%bl
-  401244:	74 3a                	je     401280 <atoi.done>
-  401246:	80 fb 2d             	cmp    $0x2d,%bl
-  401249:	74 28                	je     401273 <atoi.negative>
-  40124b:	80 fb 20             	cmp    $0x20,%bl
-  40124e:	74 1e                	je     40126e <atoi.skip>
-  401250:	80 fb 30             	cmp    $0x30,%bl
-  401253:	7c 2b                	jl     401280 <atoi.done>
-  401255:	80 fb 39             	cmp    $0x39,%bl
-  401258:	7f 26                	jg     401280 <atoi.done>
-  40125a:	41 b9 01 00 00 00    	mov    $0x1,%r9d
-  401260:	80 eb 30             	sub    $0x30,%bl
-  401263:	48 0f b6 db          	movzbq %bl,%rbx
-  401267:	4d 6b c0 0a          	imul   $0xa,%r8,%r8
-  40126b:	49 01 d8             	add    %rbx,%r8
-
-000000000040126e <atoi.skip>:
-  40126e:	48 ff c1             	inc    %rcx
-  401271:	eb cb                	jmp    40123e <atoi.forEachNumber>
-
-0000000000401273 <atoi.negative>:
-  401273:	49 83 f9 01          	cmp    $0x1,%r9
-  401277:	74 07                	je     401280 <atoi.done>
-  401279:	f7 da                	neg    %edx
-  40127b:	48 ff c1             	inc    %rcx
-  40127e:	eb be                	jmp    40123e <atoi.forEachNumber>
-
-0000000000401280 <atoi.done>:
-  401280:	4c 0f af c2          	imul   %rdx,%r8
-  401284:	44 89 c0             	mov    %r8d,%eax
-  401287:	5b                   	pop    %rbx
-  401288:	41 58                	pop    %r8
-  40128a:	41 59                	pop    %r9
-  40128c:	c3                   	ret
+  40103b:	e8 19 00 00 00       	call   0x401059
+  401040:	48 63 04 25 88 20 40 	movslq 0x402088,%rax
+  401047:	00 
+  401048:	48 99                	cqto
+  40104a:	48 63 1c 25 8c 20 40 	movslq 0x40208c,%rbx
+  401051:	00 
+  401052:	f7 fb                	idiv   %ebx
+  401054:	e8 00 00 00 00       	call   0x401059
+  401059:	48 bf 7c 20 40 00 00 	movabs $0x40207c,%rdi
+  401060:	00 00 00 
+  401063:	e8 98 01 00 00       	call   0x401200
+  401068:	49 89 c4             	mov    %rax,%r12
+  40106b:	b8 01 00 00 00       	mov    $0x1,%eax
+  401070:	bf 01 00 00 00       	mov    $0x1,%edi
+  401075:	48 be 1c 20 40 00 00 	movabs $0x40201c,%rsi
+  40107c:	00 00 00 
+  40107f:	ba 08 00 00 00       	mov    $0x8,%edx
+  401084:	0f 05                	syscall
+  401086:	b8 01 00 00 00       	mov    $0x1,%eax
+  40108b:	bf 01 00 00 00       	mov    $0x1,%edi
+  401090:	48 be 7c 20 40 00 00 	movabs $0x40207c,%rsi
+  401097:	00 00 00 
+  40109a:	4c 89 e2             	mov    %r12,%rdx
+  40109d:	0f 05                	syscall
+  40109f:	b8 01 00 00 00       	mov    $0x1,%eax
+  4010a4:	bf 01 00 00 00       	mov    $0x1,%edi
+  4010a9:	48 be 3a 20 40 00 00 	movabs $0x40203a,%rsi
+  4010b0:	00 00 00 
+  4010b3:	ba 01 00 00 00       	mov    $0x1,%edx
+  4010b8:	0f 05                	syscall
+  4010ba:	e9 28 01 00 00       	jmp    0x4011e7
+  4010bf:	b8 01 00 00 00       	mov    $0x1,%eax
+  4010c4:	bf 01 00 00 00       	mov    $0x1,%edi
+  4010c9:	48 be 00 20 40 00 00 	movabs $0x402000,%rsi
+  4010d0:	00 00 00 
+  4010d3:	ba 09 00 00 00       	mov    $0x9,%edx
+  4010d8:	0f 05                	syscall
+  4010da:	b8 00 00 00 00       	mov    $0x0,%eax
+  4010df:	bf 00 00 00 00       	mov    $0x0,%edi
+  4010e4:	48 be 3c 20 40 00 00 	movabs $0x40203c,%rsi
+  4010eb:	00 00 00 
+  4010ee:	ba 40 00 00 00       	mov    $0x40,%edx
+  4010f3:	0f 05                	syscall
+  4010f5:	48 b8 3c 20 40 00 00 	movabs $0x40203c,%rax
+  4010fc:	00 00 00 
+  4010ff:	e8 37 01 00 00       	call   0x40123b
+  401104:	89 04 25 88 20 40 00 	mov    %eax,0x402088
+  40110b:	b8 01 00 00 00       	mov    $0x1,%eax
+  401110:	bf 01 00 00 00       	mov    $0x1,%edi
+  401115:	48 be 09 20 40 00 00 	movabs $0x402009,%rsi
+  40111c:	00 00 00 
+  40111f:	ba 0a 00 00 00       	mov    $0xa,%edx
+  401124:	0f 05                	syscall
+  401126:	b8 00 00 00 00       	mov    $0x0,%eax
+  40112b:	bf 00 00 00 00       	mov    $0x0,%edi
+  401130:	48 be 3c 20 40 00 00 	movabs $0x40203c,%rsi
+  401137:	00 00 00 
+  40113a:	ba 40 00 00 00       	mov    $0x40,%edx
+  40113f:	0f 05                	syscall
+  401141:	8a 04 25 3c 20 40 00 	mov    0x40203c,%al
+  401148:	88 04 25 90 20 40 00 	mov    %al,0x402090
+  40114f:	b8 01 00 00 00       	mov    $0x1,%eax
+  401154:	bf 01 00 00 00       	mov    $0x1,%edi
+  401159:	48 be 13 20 40 00 00 	movabs $0x402013,%rsi
+  401160:	00 00 00 
+  401163:	ba 09 00 00 00       	mov    $0x9,%edx
+  401168:	0f 05                	syscall
+  40116a:	b8 00 00 00 00       	mov    $0x0,%eax
+  40116f:	bf 00 00 00 00       	mov    $0x0,%edi
+  401174:	48 be 3c 20 40 00 00 	movabs $0x40203c,%rsi
+  40117b:	00 00 00 
+  40117e:	ba 40 00 00 00       	mov    $0x40,%edx
+  401183:	0f 05                	syscall
+  401185:	48 b8 3c 20 40 00 00 	movabs $0x40203c,%rax
+  40118c:	00 00 00 
+  40118f:	e8 a7 00 00 00       	call   0x40123b
+  401194:	89 04 25 8c 20 40 00 	mov    %eax,0x40208c
+  40119b:	48 0f b6 04 25 90 20 	movzbq 0x402090,%rax
+  4011a2:	40 00 
+  4011a4:	48 83 f8 2b          	cmp    $0x2b,%rax
+  4011a8:	0f 84 52 fe ff ff    	je     0x401000
+  4011ae:	48 83 f8 2d          	cmp    $0x2d,%rax
+  4011b2:	0f 84 5e fe ff ff    	je     0x401016
+  4011b8:	48 83 f8 2a          	cmp    $0x2a,%rax
+  4011bc:	0f 84 69 fe ff ff    	je     0x40102b
+  4011c2:	48 83 f8 2f          	cmp    $0x2f,%rax
+  4011c6:	0f 84 74 fe ff ff    	je     0x401040
+  4011cc:	b8 01 00 00 00       	mov    $0x1,%eax
+  4011d1:	bf 01 00 00 00       	mov    $0x1,%edi
+  4011d6:	48 be 24 20 40 00 00 	movabs $0x402024,%rsi
+  4011dd:	00 00 00 
+  4011e0:	ba 16 00 00 00       	mov    $0x16,%edx
+  4011e5:	0f 05                	syscall
+  4011e7:	b8 3c 00 00 00       	mov    $0x3c,%eax
+  4011ec:	48 31 ff             	xor    %rdi,%rdi
+  4011ef:	0f 05                	syscall
+  4011f1:	66 2e 0f 1f 84 00 00 	cs nopw 0x0(%rax,%rax,1)
+  4011f8:	00 00 00 
+  4011fb:	0f 1f 44 00 00       	nopl   0x0(%rax,%rax,1)
+  401200:	49 89 f8             	mov    %rdi,%r8
+  401203:	85 c0                	test   %eax,%eax
+  401205:	79 09                	jns    0x401210
+  401207:	f7 d8                	neg    %eax
+  401209:	41 c6 00 2d          	movb   $0x2d,(%r8)
+  40120d:	49 ff c0             	inc    %r8
+  401210:	bb 0a 00 00 00       	mov    $0xa,%ebx
+  401215:	48 31 c9             	xor    %rcx,%rcx
+  401218:	31 d2                	xor    %edx,%edx
+  40121a:	f7 f3                	div    %ebx
+  40121c:	80 c2 30             	add    $0x30,%dl
+  40121f:	52                   	push   %rdx
+  401220:	48 ff c1             	inc    %rcx
+  401223:	85 c0                	test   %eax,%eax
+  401225:	75 f1                	jne    0x401218
+  401227:	58                   	pop    %rax
+  401228:	41 88 00             	mov    %al,(%r8)
+  40122b:	49 ff c0             	inc    %r8
+  40122e:	e2 f7                	loop   0x401227
+  401230:	41 c6 00 00          	movb   $0x0,(%r8)
+  401234:	4c 89 c0             	mov    %r8,%rax
+  401237:	48 29 f8             	sub    %rdi,%rax
+  40123a:	c3                   	ret
+  40123b:	53                   	push   %rbx
+  40123c:	41 50                	push   %r8
+  40123e:	41 51                	push   %r9
+  401240:	48 31 c9             	xor    %rcx,%rcx
+  401243:	ba 01 00 00 00       	mov    $0x1,%edx
+  401248:	4d 31 c0             	xor    %r8,%r8
+  40124b:	4d 31 c9             	xor    %r9,%r9
+  40124e:	8a 1c 08             	mov    (%rax,%rcx,1),%bl
+  401251:	80 fb 00             	cmp    $0x0,%bl
+  401254:	74 3f                	je     0x401295
+  401256:	80 fb 2d             	cmp    $0x2d,%bl
+  401259:	74 2d                	je     0x401288
+  40125b:	80 fb 2b             	cmp    $0x2b,%bl
+  40125e:	74 23                	je     0x401283
+  401260:	80 fb 20             	cmp    $0x20,%bl
+  401263:	74 1e                	je     0x401283
+  401265:	80 fb 30             	cmp    $0x30,%bl
+  401268:	7c 2b                	jl     0x401295
+  40126a:	80 fb 39             	cmp    $0x39,%bl
+  40126d:	7f 26                	jg     0x401295
+  40126f:	41 b9 01 00 00 00    	mov    $0x1,%r9d
+  401275:	80 eb 30             	sub    $0x30,%bl
+  401278:	48 0f b6 db          	movzbq %bl,%rbx
+  40127c:	4d 6b c0 0a          	imul   $0xa,%r8,%r8
+  401280:	49 01 d8             	add    %rbx,%r8
+  401283:	48 ff c1             	inc    %rcx
+  401286:	eb c6                	jmp    0x40124e
+  401288:	49 83 f9 01          	cmp    $0x1,%r9
+  40128c:	74 07                	je     0x401295
+  40128e:	f7 da                	neg    %edx
+  401290:	48 ff c1             	inc    %rcx
+  401293:	eb b9                	jmp    0x40124e
+  401295:	4c 0f af c2          	imul   %rdx,%r8
+  401299:	44 89 c0             	mov    %r8d,%eax
+  40129c:	5b                   	pop    %rbx
+  40129d:	41 58                	pop    %r8
+  40129f:	41 59                	pop    %r9
+  4012a1:	c3                   	ret
 ```
 
 ## objdump -s
 ```
 Contents of section .text:
- 401000 8b042584 2040008b 1c258820 40004801  ..%. @...%. @.H.
- 401010 d8e84100 00008b04 25842040 008b1c25  ..A.....%. @...%
- 401020 88204000 29d8e82c 0000008b 04258420  . @.)..,.....%. 
- 401030 40008b1c 25882040 00f7e3e8 17000000  @...%. @........
- 401040 8b042584 2040008b 1c258820 400031d2  ..%. @...%. @.1.
- 401050 f7f3e800 00000048 bf7c2040 00000000  .......H.| @....
- 401060 00e88a01 00004989 c4b80100 0000bf01  ......I.........
- 401070 00000048 be1c2040 00000000 00ba0800  ...H.. @........
- 401080 00000f05 b8010000 00bf0100 000048be  ..............H.
- 401090 7c204000 00000000 4c89e20f 05b80100  | @.....L.......
- 4010a0 0000bf01 00000048 be3a2040 00000000  .......H.: @....
- 4010b0 00ba0100 00000f05 e9280100 00b80100  .........(......
- 4010c0 0000bf01 00000048 be002040 00000000  .......H.. @....
- 4010d0 00ba0900 00000f05 b8000000 00bf0000  ................
- 4010e0 000048be 3c204000 00000000 ba400000  ..H.< @......@..
- 4010f0 000f0548 b83c2040 00000000 00e82901  ...H.< @......).
- 401100 00008904 25842040 00b80100 0000bf01  ....%. @........
- 401110 00000048 be092040 00000000 00ba0a00  ...H.. @........
- 401120 00000f05 b8000000 00bf0000 000048be  ..............H.
- 401130 3c204000 00000000 ba400000 000f058a  < @......@......
- 401140 04253c20 40008804 258c2040 00b80100  .%< @...%. @....
- 401150 0000bf01 00000048 be132040 00000000  .......H.. @....
- 401160 00ba0900 00000f05 b8000000 00bf0000  ................
- 401170 000048be 3c204000 00000000 ba400000  ..H.< @......@..
- 401180 000f0548 b83c2040 00000000 00e89900  ...H.< @........
- 401190 00008904 25882040 00480fb6 04258c20  ....%. @.H...%. 
- 4011a0 40004883 f82b0f84 54feffff 4883f82d  @.H..+..T...H..-
- 4011b0 0f8460fe ffff4883 f82a0f84 6bfeffff  ..`...H..*..k...
- 4011c0 4883f82f 0f8476fe ffffb801 000000bf  H../..v.........
- 4011d0 01000000 48be2420 40000000 0000ba16  ....H.$ @.......
- 4011e0 0000000f 05b83c00 00004831 ff0f0590  ......<...H1....
- 4011f0 4989f885 c07909f7 d841c600 2d49ffc0  I....y...A..-I..
- 401200 bb0a0000 004831c9 31d2f7f3 80c23052  .....H1.1.....0R
- 401210 48ffc185 c075f158 41880049 ffc0e2f7  H....u.XA..I....
- 401220 41c60000 4c89c048 29f8c353 41504151  A...L..H)..SAPAQ
- 401230 4831c9ba 01000000 4d31c04d 31c98a1c  H1......M1.M1...
- 401240 0880fb00 743a80fb 2d742880 fb20741e  ....t:..-t(.. t.
- 401250 80fb307c 2b80fb39 7f2641b9 01000000  ..0|+..9.&A.....
- 401260 80eb3048 0fb6db4d 6bc00a49 01d848ff  ..0H...Mk..I..H.
- 401270 c1ebcb49 83f90174 07f7da48 ffc1ebbe  ...I...t...H....
- 401280 4c0fafc2 4489c05b 41584159 c3        L...D..[AXAY.   
+ 401000 8b042588 2040008b 1c258c20 40004801  ..%. @...%. @.H.
+ 401010 d8e84300 00008b04 25882040 008b1c25  ..C.....%. @...%
+ 401020 8c204000 29d8e82e 0000008b 04258820  . @.)........%. 
+ 401030 40008b1c 258c2040 00f7e3e8 19000000  @...%. @........
+ 401040 48630425 88204000 48994863 1c258c20  Hc.%. @.H.Hc.%. 
+ 401050 4000f7fb e8000000 0048bf7c 20400000  @........H.| @..
+ 401060 000000e8 98010000 4989c4b8 01000000  ........I.......
+ 401070 bf010000 0048be1c 20400000 000000ba  .....H.. @......
+ 401080 08000000 0f05b801 000000bf 01000000  ................
+ 401090 48be7c20 40000000 00004c89 e20f05b8  H.| @.....L.....
+ 4010a0 01000000 bf010000 0048be3a 20400000  .........H.: @..
+ 4010b0 000000ba 01000000 0f05e928 010000b8  ...........(....
+ 4010c0 01000000 bf010000 0048be00 20400000  .........H.. @..
+ 4010d0 000000ba 09000000 0f05b800 000000bf  ................
+ 4010e0 00000000 48be3c20 40000000 0000ba40  ....H.< @......@
+ 4010f0 0000000f 0548b83c 20400000 000000e8  .....H.< @......
+ 401100 37010000 89042588 204000b8 01000000  7.....%. @......
+ 401110 bf010000 0048be09 20400000 000000ba  .....H.. @......
+ 401120 0a000000 0f05b800 000000bf 00000000  ................
+ 401130 48be3c20 40000000 0000ba40 0000000f  H.< @......@....
+ 401140 058a0425 3c204000 88042590 204000b8  ...%< @...%. @..
+ 401150 01000000 bf010000 0048be13 20400000  .........H.. @..
+ 401160 000000ba 09000000 0f05b800 000000bf  ................
+ 401170 00000000 48be3c20 40000000 0000ba40  ....H.< @......@
+ 401180 0000000f 0548b83c 20400000 000000e8  .....H.< @......
+ 401190 a7000000 8904258c 20400048 0fb60425  ......%. @.H...%
+ 4011a0 90204000 4883f82b 0f8452fe ffff4883  . @.H..+..R...H.
+ 4011b0 f82d0f84 5efeffff 4883f82a 0f8469fe  .-..^...H..*..i.
+ 4011c0 ffff4883 f82f0f84 74feffff b8010000  ..H../..t.......
+ 4011d0 00bf0100 000048be 24204000 00000000  ......H.$ @.....
+ 4011e0 ba160000 000f05b8 3c000000 4831ff0f  ........<...H1..
+ 4011f0 05662e0f 1f840000 0000000f 1f440000  .f...........D..
+ 401200 4989f885 c07909f7 d841c600 2d49ffc0  I....y...A..-I..
+ 401210 bb0a0000 004831c9 31d2f7f3 80c23052  .....H1.1.....0R
+ 401220 48ffc185 c075f158 41880049 ffc0e2f7  H....u.XA..I....
+ 401230 41c60000 4c89c048 29f8c353 41504151  A...L..H)..SAPAQ
+ 401240 4831c9ba 01000000 4d31c04d 31c98a1c  H1......M1.M1...
+ 401250 0880fb00 743f80fb 2d742d80 fb2b7423  ....t?..-t-..+t#
+ 401260 80fb2074 1e80fb30 7c2b80fb 397f2641  .. t...0|+..9.&A
+ 401270 b9010000 0080eb30 480fb6db 4d6bc00a  .......0H...Mk..
+ 401280 4901d848 ffc1ebc6 4983f901 7407f7da  I..H....I...t...
+ 401290 48ffc1eb b94c0faf c24489c0 5b415841  H....L...D..[AXA
+ 4012a0 59c3                                 Y.              
 Contents of section .data:
  402000 44696769 7420313e 204f7065 7261746f  Digit 1> Operato
  402010 723e2044 69676974 20323e20 52657375  r> Digit 2> Resu
  402020 6c743e20 4e6f206f 70657261 746f7220  lt> No operator 
- 402030 77617320 666f756e 640a0a             was found..
+ 402030 77617320 666f756e 640a0a             was found..     
 ```
